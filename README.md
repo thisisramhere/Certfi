@@ -20,64 +20,64 @@ CertiFi is a smart certificate automation & verification platform that helps org
 ## Key Features
 
 ### Certificate Generation
-- ✅ Bulk certificate creation from templates
-- ✅ PDF and PNG output formats
-- ✅ QR code generation for verification
-- ✅ Custom placeholders (name, event, position, date, etc.)
-- ✅ Watermark support (logo and text)
-- ✅ Unique certificate IDs (CERT-YYYY-XXXXXX)
+-  Bulk certificate creation from templates
+-  PDF and PNG output formats
+-  QR code generation for verification
+-  Custom placeholders (name, event, position, date, etc.)
+-  Watermark support (logo and text)
+-  Unique certificate IDs (CERT-YYYY-XXXXXX)
 
 ### Template Management
-- ✅ Upload PNG, JPG, or PDF templates
-- ✅ Template placeholders with full styling (font, color, rotation, opacity)
-- ✅ Template dimensions and DPI settings
-- ✅ Organization-specific templates
-- ✅ Default template management
+-  Upload PNG, JPG, or PDF templates
+-  Template placeholders with full styling (font, color, rotation, opacity)
+-  Template dimensions and DPI settings
+-  Organization-specific templates
+-  Default template management
 
 ### Participant Management
-- ✅ CSV and Excel import with field mapping
-- ✅ Duplicate detection
-- ✅ Validation rules
-- ✅ Bulk operations
+-  CSV and Excel import with field mapping
+-  Duplicate detection
+-  Validation rules
+-  Bulk operations
 
 ### Certificate Verification
-- ✅ Public verification endpoint
-- ✅ QR code scanning support
-- ✅ Tamper detection using SHA-256
-- ✅ Certificate status (valid/invalid/tampered)
+-  Public verification endpoint
+-  QR code scanning support
+-  Tamper detection using SHA-256
+-  Certificate status (valid/invalid/tampered)
 
 ### Anti-Fake Features
-- ✅ Unique certificate IDs
-- ✅ Tamper detection with SHA-256
-- ✅ QR code verification
-- ✅ Watermarks
+-  Unique certificate IDs
+-  Tamper detection with SHA-256
+-  QR code verification
+-  Watermarks
 
 ### Analytics
-- ✅ Daily and monthly statistics
-- ✅ Certificates generated/sent/failed
-- ✅ Verification requests and results
-- ✅ Download statistics
-- ✅ Participant tracking
+-  Daily and monthly statistics
+-  Certificates generated/sent/failed
+-  Verification requests and results
+-  Download statistics
+-  Participant tracking
 
 ### Auditing
-- ✅ Login activities
-- ✅ Uploads and generation
-- ✅ Downloads and verification
-- ✅ Admin actions
+-  Login activities
+-  Uploads and generation
+-  Downloads and verification
+-  Admin actions
 
 ### Security
-- ✅ JWT-based authentication
-- ✅ Role-based access control (Admin, Staff, Viewer)
-- ✅ Password hashing with bcrypt
-- ✅ Rate limiting
-- ✅ CORS protection
-- ✅ File validation
+-  JWT-based authentication
+-  Role-based access control (Admin, Staff, Viewer)
+-  Password hashing with bcrypt
+-  Rate limiting
+-  CORS protection
+-  File validation
 
 ### Integrations
-- ✅ Email service for certificate delivery
-- ✅ ZIP downloads for bulk certificates
-- ✅ Swagger/OpenAPI documentation
-- ✅ JSON API responses
+-  Email service for certificate delivery
+-  ZIP downloads for bulk certificates
+-  Swagger/OpenAPI documentation
+-  JSON API responses
 
 ## Technology Stack
 
