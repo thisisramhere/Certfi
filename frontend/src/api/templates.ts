@@ -29,6 +29,11 @@ export const templatesAPI = {
     await apiClient.delete(`/templates/${templateId}`);
   },
 
+  async duplicate(templateId: string): Promise<CertificateTemplate> {
+    const response = await apiClient.post<CertificateTemplate>(`/templates/${templateId}/duplicate`);
+    return response.data;
+  },
+
   async getPlaceholders(templateId: string) {
     const response = await apiClient.get(`/templates/${templateId}/placeholders`);
     return response.data;
@@ -46,6 +51,16 @@ export const templatesAPI = {
 
   async savePlaceholders(templateId: string, placeholders: any[]) {
     const response = await apiClient.put(`/templates/${templateId}/placeholders`, placeholders);
+    return response.data;
+  },
+
+  async aiAnalyzeTemplate(templateId: string) {
+    const response = await apiClient.post(`/templates/${templateId}/ai/analyze`);
+    return response.data;
+  },
+
+  async aiFinalizePlacements(templateId: string, placeholders: any[]) {
+    const response = await apiClient.post(`/templates/${templateId}/ai/finalize`, { placeholders });
     return response.data;
   },
 };

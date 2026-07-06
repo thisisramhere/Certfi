@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status, UploadFile, File, Form, BackgroundTasks, Query, Body, Request
+import os
+import uuid
+from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File, Form, BackgroundTasks, Query, Body, Request
 from fastapi.responses import FileResponse, JSONResponse
 from typing import Optional, List
 from datetime import datetime
@@ -9,7 +11,7 @@ from app.schemas import (
     UserCreate, UserLogin, UserResponse, UserUpdate,
     OrganizationCreate, OrganizationUpdate,
     TemplateCreate, TemplateUpdate,
-    ParticipantCreate, CertificateCreate,
+    ParticipantCreate, ParticipantResponse, CertificateCreate,
     TemplatePlaceholderCreate, TemplatePlaceholderUpdate, TemplatePlaceholderResponse
 )
 from app.services.auth import AuthService, OrganizationService, UserService
@@ -37,6 +39,7 @@ participants_router = APIRouter(prefix="/participants")
 certificates_router = APIRouter(prefix="/certificates")
 verification_router = APIRouter(prefix="/verify")
 analytics_router = APIRouter(prefix="/analytics")
+fonts_router = APIRouter(prefix="/fonts")
 
 
 @auth_router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -168,10 +171,23 @@ async def create_template(
         raise HTTPException(status_code=413, detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024*1024)}MB")
     await file.seek(0)
     organization_id = current_user.get("organization_id")
-    return await template_service.create_template(
-        name, description, file, file_type, width, height, dpi, background_color,
-        current_user["sub"], organization_id
-    )
+    if not organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not associated with an organization."
+        )
+    try:
+        result = await template_service.create_template(
+            name, description, file, file_type, width, height, dpi, background_color,
+            current_user["sub"], organization_id
+        )
+        return result
+    except Exception as e:
+        logger.exception("TEMPLATE CREATION FAILED: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Template creation failed: {str(e)}"
+        )
 
 
 @templates_router.get("/")
@@ -213,6 +229,16 @@ async def delete_template(
     return {"message": "Template deleted successfully"}
 
 
+@templates_router.post("/{template_id}/duplicate")
+async def duplicate_template(
+    template_id: str,
+    current_user: dict = Depends(get_current_user),
+    template_service: TemplateService = Depends(lambda: TemplateService(TemplateRepository(Template), TemplatePlaceholderRepository(TemplatePlaceholder)))
+):
+    owner_id = current_user.get("id") or current_user.get("sub")
+    return await template_service.duplicate_template(template_id, owner_id)
+
+
 @templates_router.post("/{template_id}/placeholders")
 async def add_placeholder(
     template_id: str,
@@ -252,35 +278,121 @@ async def replace_placeholders(
     return await template_service.replace_placeholders(template_id, placeholders)
 
 
+@templates_router.get("/{template_id}/image")
+async def get_template_image(
+    template_id: str,
+    template_service: TemplateService = Depends(lambda: TemplateService(TemplateRepository(Template), TemplatePlaceholderRepository(TemplatePlaceholder)))
+):
+    import os
+    from fastapi.responses import FileResponse
+    from fastapi import HTTPException
+
+    template = await template_service.get_template(template_id)
+    file_path = template.file_path
+
+    if file_path and file_path.startswith("./"):
+        base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        file_path = os.path.join(base, file_path[2:])
+
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Template image not found")
+
+    return FileResponse(file_path, media_type="image/png")
+
+
+@templates_router.post("/{template_id}/ai/analyze")
+async def ai_analyze_template(
+    template_id: str,
+    current_user: dict = Depends(get_current_user),
+    template_service: TemplateService = Depends(lambda: TemplateService(TemplateRepository(Template), TemplatePlaceholderRepository(TemplatePlaceholder)))
+):
+    try:
+        return await template_service.analyze_template_with_ai(template_id)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@templates_router.post("/{template_id}/ai/finalize")
+async def ai_finalize_placeholders(
+    template_id: str,
+    body: dict = Body(...),
+    current_user: dict = Depends(get_current_user),
+    template_service: TemplateService = Depends(lambda: TemplateService(TemplateRepository(Template), TemplatePlaceholderRepository(TemplatePlaceholder)))
+):
+    try:
+        placeholders = body.get("placeholders", [])
+        user_id = current_user.get("sub", "unknown")
+        logger.info(
+            "AI FINALIZE: template_id=%s, user_id=%s, placeholder_count=%d",
+            template_id, user_id, len(placeholders),
+        )
+        for i, p in enumerate(placeholders):
+            logger.info(
+                "AI FINALIZE [%d]: type=%s, x=%s, y=%s, w=%s, h=%s",
+                i, p.get("type"), p.get("x"), p.get("y"),
+                p.get("width"), p.get("height"),
+            )
+        result = await template_service.replace_placeholders(template_id, placeholders)
+        logger.info("AI FINALIZE: saved %d placeholders for template %s", len(result), template_id)
+        return result
+    except Exception as e:
+        logger.error("AI FINALIZE FAILED: template_id=%s, error=%s", template_id, str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@participants_router.post("")
+async def create_participant(
+    participant_data: ParticipantCreate,
+    current_user: dict = Depends(get_current_user),
+    participant_service: ParticipantService = Depends(lambda: ParticipantService(ParticipantRepository(Participant)))
+):
+    organization_id = current_user.get("organization_id")
+    if not organization_id:
+        raise HTTPException(status_code=400, detail="User is not associated with an organization.")
+    try:
+        result = await participant_service.create_participant(participant_data, organization_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @participants_router.post("/import")
 async def import_participants(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    field_mapping: Optional[str] = Form(None),
+    mapping: str = Form(...),
     current_user: dict = Depends(get_current_user),
     participant_service: ParticipantService = Depends(lambda: ParticipantService(ParticipantRepository(Participant)))
 ):
     import json
-    content = await file.read()
-    if len(content) > settings.MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=413, detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE // (1024*1024)}MB")
-    await file.seek(0)
-    mapping = json.loads(field_mapping) if field_mapping else None
-    organization_id = current_user.get("organization_id")
-    return await participant_service.import_participants(file, organization_id, mapping)
+    try:
+        parsed_mapping = json.loads(mapping)
+        organization_id = current_user.get("organization_id")
+        if not organization_id:
+            raise HTTPException(status_code=400, detail="User is not associated with an organization.")
+        result = await participant_service.import_participants(
+            file=file,
+            organization_id=organization_id,
+            field_mapping=parsed_mapping,
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Participant import failed")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@participants_router.get("/")
+@participants_router.get("", response_model=list[ParticipantResponse])
 async def list_participants(
-    skip: int = Query(0),
-    limit: int = Query(100),
-    search: str = Query(None),
     current_user: dict = Depends(get_current_user),
     participant_service: ParticipantService = Depends(lambda: ParticipantService(ParticipantRepository(Participant)))
 ):
     organization_id = current_user.get("organization_id")
     if organization_id:
-        return await participant_service.get_participants(organization_id, skip, limit, search)
+        placeholders = await participant_service.get_participants(organization_id)
+        return placeholders
     return []
 
 
@@ -291,6 +403,11 @@ async def delete_participant(
     participant_service: ParticipantService = Depends(lambda: ParticipantService(ParticipantRepository(Participant)))
 ):
     organization_id = current_user.get("organization_id")
+    if not organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not associated with an organization."
+        )
     await participant_service.delete_participant(participant_id, organization_id)
     return {"message": "Participant deleted successfully"}
 
@@ -305,6 +422,11 @@ async def generate_certificates(
     ))
 ):
     organization_id = current_user.get("organization_id")
+    if not organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not associated with an organization."
+        )
     results = []
     for cert_data in certificates_data:
         try:
@@ -315,7 +437,7 @@ async def generate_certificates(
                 creator_id=current_user["sub"],
                 participant_data={"name": cert_data.participant_name, "email": cert_data.participant_email, "event": cert_data.participant_event},
                 template_data={"name": cert_data.template_name},
-                placeholder_values={"name": cert_data.participant_name, "event": cert_data.participant_event or ""}
+                placeholder_values={"name": cert_data.participant_name}
             )
             results.append({"certificate_id": certificate.certificate_id, "status": "success"})
         except Exception as e:
@@ -348,6 +470,11 @@ async def download_all_certificates(
     ))
 ):
     organization_id = current_user.get("organization_id")
+    if not organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not associated with an organization."
+        )
     zip_filename = await certificate_service.download_all_certificates(organization_id)
     return FileResponse(zip_filename, filename="certificates.zip")
 
@@ -398,6 +525,8 @@ async def get_verification_stats(
     ))
 ):
     organization_id = current_user.get("organization_id")
+    if not organization_id:
+        return {"total": 0, "valid": 0, "invalid": 0, "tampered": 0}
     return await verification_service.get_verification_stats(organization_id, from_date, to_date)
 
 
@@ -418,6 +547,8 @@ async def get_analytics_summary(
     analytics_service: AnalyticsService = Depends(lambda: AnalyticsService(AnalyticsRepository(Analytics)))
 ):
     organization_id = current_user.get("organization_id")
+    if not organization_id:
+        return {"templates": 0, "certificates": 0, "participants": 0, "active": True}
     return await analytics_service.get_summary(organization_id)
 
 
@@ -428,7 +559,53 @@ async def get_analytics(
     analytics_service: AnalyticsService = Depends(lambda: AnalyticsService(AnalyticsRepository(Analytics)))
 ):
     organization_id = current_user.get("organization_id")
+    if not organization_id:
+        return []
     return await analytics_service.get_analytics(organization_id, period)
+
+
+FONT_EXTENSIONS = {".ttf", ".otf"}
+FONT_MAX_SIZE = 10 * 1024 * 1024
+
+
+@fonts_router.post("/upload")
+async def upload_font(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in FONT_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid font extension '{ext}'. Allowed: {', '.join(FONT_EXTENSIONS)}"
+        )
+
+    content = await file.read()
+    if len(content) > FONT_MAX_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Font file too large. Maximum size is 10MB."
+        )
+    await file.seek(0)
+
+    fonts_dir = os.path.join(settings.STORAGE_BASE_PATH, "fonts")
+    os.makedirs(fonts_dir, exist_ok=True)
+
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(fonts_dir, unique_name)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    base_url = settings.BACKEND_URL.rstrip("/")
+    font_url = f"{base_url}/storage/fonts/{unique_name}"
+    font_family = os.path.splitext(file.filename or "Custom Font")[0]
+
+    return {
+        "font_family": font_family,
+        "font_url": font_url,
+        "font_file_path": file_path,
+    }
 
 
 main_router = APIRouter()
@@ -440,3 +617,4 @@ main_router.include_router(participants_router)
 main_router.include_router(certificates_router)
 main_router.include_router(verification_router)
 main_router.include_router(analytics_router)
+main_router.include_router(fonts_router)

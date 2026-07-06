@@ -241,7 +241,7 @@ export default function SettingsPage({
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. Kyoto Ingestion Roster Sync" 
+                      placeholder="e.g. My API Key" 
                       value={newKeyName}
                       onChange={(e) => setNewKeyName(e.target.value)}
                       className="w-full bg-white border border-neutral-200 p-2 rounded outline-none"
@@ -319,17 +319,13 @@ export default function SettingsPage({
                   </button>
                 </div>
 
-                <div className="space-y-2">
+                  <div className="space-y-2">
                   <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest block font-bold">SECURE SIGN-IN LEDGER HISTORY</span>
                   <div className="border border-neutral-200 rounded-lg overflow-hidden text-[10px] font-mono">
                     <div className="p-3 bg-neutral-50 border-b border-neutral-200 text-neutral-500 uppercase text-[9px]">IP / Location, Device Browser, Timestamp</div>
-                    <div className="p-3 flex items-center justify-between border-b border-neutral-100">
-                      <span>114.39.20.12 (Kyoto, Japan) — Chrome Mac OS</span>
-                      <span className="text-green-600 font-bold flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" /> CURRENT ACTIVE SESSION</span>
-                    </div>
-                    <div className="p-3 flex items-center justify-between text-neutral-500">
-                      <span>92.4.150.9 (Tokyo, Japan) — Safari IOS</span>
-                      <span>2026-06-25T14:12:10Z</span>
+                    <div className="p-6 text-center text-neutral-400">
+                      <p className="text-xs font-semibold">No login history available</p>
+                      <p className="text-[10px] mt-1">Sign-in sessions will appear here</p>
                     </div>
                   </div>
                 </div>
@@ -350,36 +346,19 @@ export default function SettingsPage({
                 
                 {/* Active plan card */}
                 <div className="border border-neutral-200 rounded-lg p-5 bg-[#FAF9F6] space-y-3">
-                  <span className="bg-neutral-900 text-white font-mono font-bold text-[9px] px-2 py-0.5 rounded uppercase">Enterprise Enterprise</span>
-                  <h3 className="font-bold text-sm text-neutral-800">Kyoto Academy Ledger Pack</h3>
-                  <div className="text-xl font-black text-neutral-900">$299 / month</div>
-                  <p className="text-[10px] text-neutral-400 leading-normal">Dispatched via custom Kyoto Dedicated SMTP relays. Includes infinite QR verification lookups.</p>
+                  <span className="bg-neutral-100 text-neutral-500 font-mono font-bold text-[9px] px-2 py-0.5 rounded uppercase">No Active Plan</span>
+                  <h3 className="font-bold text-sm text-neutral-500">No active subscription</h3>
+                  <div className="text-xl font-black text-neutral-400">-</div>
+                  <p className="text-[10px] text-neutral-400 leading-normal">Subscribe to a plan to start issuing certificates at scale.</p>
                 </div>
 
                 {/* Usage metrics limits */}
                 <div className="border border-neutral-200 rounded-lg p-5 space-y-4">
                   <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest block font-bold">MONTHLY VOLUME USAGE</span>
                   
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] font-bold text-neutral-700 mb-1">
-                        <span>Issued Certificates Block:</span>
-                        <span>1,352 / 5,000</span>
-                      </div>
-                      <div className="w-full bg-neutral-100 h-2 rounded overflow-hidden">
-                        <div className="bg-[#E52E40] h-full" style={{ width: '27%' }}></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] font-bold text-neutral-700 mb-1">
-                        <span>Ledger API Endpoint Bandwidth:</span>
-                        <span>4.2M / 10M lookups</span>
-                      </div>
-                      <div className="w-full bg-neutral-100 h-2 rounded overflow-hidden">
-                        <div className="bg-neutral-900 h-full" style={{ width: '42%' }}></div>
-                      </div>
-                    </div>
+                  <div className="p-6 text-center text-neutral-400">
+                    <p className="text-xs font-semibold">No active subscription</p>
+                    <p className="text-[10px] mt-1">Usage metrics will appear once subscribed</p>
                   </div>
                 </div>
 

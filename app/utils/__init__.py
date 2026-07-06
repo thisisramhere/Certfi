@@ -117,21 +117,27 @@ def parse_csv_file(file_content: bytes, field_mapping: Optional[dict] = None) ->
     text_content = file_content.decode('utf-8-sig')
     participants = []
     
-    if field_mapping:
-        fieldnames = list(field_mapping.values())
-        reader = csv.DictReader(StringIO(text_content))
-    else:
-        reader = csv.DictReader(StringIO(text_content))
+    reader = csv.DictReader(StringIO(text_content))
+    
+    raw_headers = [h.strip() for h in (reader.fieldnames or [])]
+    normalized_headers = {h.lower(): h for h in raw_headers}
     
     for row in reader:
         participant = {}
-        for original_field, mapped_field in (field_mapping or {}).items():
-            if original_field in row:
-                val = row[original_field]
-                participant[mapped_field] = val.strip() if isinstance(val, str) else val
+        if field_mapping:
+            for original_field, mapped_field in field_mapping.items():
+                key = original_field.strip().lower()
+                actual_header = normalized_headers.get(key)
+                if actual_header and actual_header in row:
+                    val = row[actual_header]
+                    participant[mapped_field] = val.strip() if isinstance(val, str) else val
 
         if not participant and isinstance(row, dict):
-            participant = {k: v.strip() if isinstance(v, str) else v for k, v in row.items() if v}
+            for k, v in row.items():
+                if v and k.strip():
+                    normal_key = k.strip().lower()
+                    val = v.strip() if isinstance(v, str) else v
+                    participant[normal_key] = val
 
         if participant:
             participants.append(participant)
@@ -142,33 +148,45 @@ def parse_csv_file(file_content: bytes, field_mapping: Optional[dict] = None) ->
 def parse_excel_file(file_content: bytes, field_mapping: Optional[dict] = None) -> list:
     import io
     from openpyxl import load_workbook
-    
+
     file_like = io.BytesIO(file_content)
     workbook = load_workbook(file_like, data_only=True)
-    
+    worksheet = workbook.active
+
+    rows = list(worksheet.iter_rows(values_only=True))
+    if not rows:
+        return []
+
+    headers = [str(h).strip().lower() for h in rows[0]]
+
+    normalized_mapping = {k.strip().lower(): v for k, v in (field_mapping or {}).items()}
+
     participants = []
-    
-    for worksheet in workbook:
-        for row in worksheet.iter_rows(values_only=True):
-            if not any(row):
+    for row in rows[1:]:
+        if not any(row):
+            continue
+
+        data = {}
+        for index, value in enumerate(row):
+            if index >= len(headers):
                 continue
-                
-            if field_mapping:
-                participant = {}
-                for original_field, mapped_field in field_mapping.items():
-                    try:
-                        col_idx = worksheet[original_field].column
-                        participant[mapped_field] = row[col_idx - 1]
-                    except KeyError:
-                        continue
-            elif worksheet.max_column > 0:
-                headers = row[:worksheet.max_column]
-                participant = dict(zip(headers, row[worksheet.max_column:]))
-            
-            participants.append(participant)
-        
-        break
-    
+            excel_header = headers[index]
+            if excel_header in normalized_mapping:
+                field = normalized_mapping[excel_header]
+                data[field] = str(value).strip() if isinstance(value, str) else value
+
+        if not data:
+            data = {}
+            for index, value in enumerate(row):
+                if index >= len(headers):
+                    continue
+                key = headers[index].strip().lower()
+                if value is not None:
+                    data[key] = str(value).strip() if isinstance(value, str) else value
+
+        if data:
+            participants.append(data)
+
     return participants
 
 

@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+import traceback
 import logging
 
 logger = logging.getLogger(__name__)
@@ -110,12 +111,13 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
 
 
 async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
-    logger.error(f"IntegrityError: {str(exc)}")
+    logger.error("IntegrityError traceback:\n%s", traceback.format_exc())
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={
             "error": True,
             "message": "Database integrity error",
+            "detail": str(exc.orig),
             "details": {"error": str(exc.orig)},
             "status_code": status.HTTP_409_CONFLICT
         }
@@ -123,12 +125,13 @@ async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSON
 
 
 async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
-    logger.error(f"SQLAlchemyError: {str(exc)}")
+    logger.error("SQLAlchemyError traceback:\n%s", traceback.format_exc())
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": True,
             "message": "Database error",
+            "detail": str(exc),
             "details": {"error": str(exc)},
             "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
         }
@@ -136,12 +139,13 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JS
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception(f"Unhandled exception: {str(exc)}")
+    logger.error("Unhandled exception traceback:\n%s", traceback.format_exc())
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": True,
             "message": "Internal server error",
+            "detail": str(exc),
             "details": {"error": str(exc)},
             "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR
         }

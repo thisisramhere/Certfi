@@ -26,8 +26,8 @@ export default function OrgAndUsers({
   const { addToast } = useToast();
 
   // Org branding states
-  const [orgName, setOrgName] = useState('Kyoto Cyber Defense Academy');
-  const [customDomain, setCustomDomain] = useState('verify.kyoto-academy.edu');
+  const [orgName, setOrgName] = useState('');
+  const [customDomain, setCustomDomain] = useState('');
 
   const handleSendInvite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,7 +188,7 @@ export default function OrgAndUsers({
                 <input 
                   type="text" 
                   required
-                  placeholder="e.g. Kenji Kamada" 
+                  placeholder="e.g. John Doe" 
                   value={inviteName}
                   onChange={(e) => setInviteName(e.target.value)}
                   className="w-full bg-white border border-neutral-200 p-2.5 rounded outline-none"
@@ -200,7 +200,7 @@ export default function OrgAndUsers({
                 <input 
                   type="email" 
                   required
-                  placeholder="e.g. kamada@cyber.kyoto" 
+                  placeholder="e.g. johndoe@gmail.com" 
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   className="w-full bg-white border border-neutral-200 p-2.5 rounded outline-none"

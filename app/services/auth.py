@@ -27,12 +27,30 @@ class AuthService:
             if existing_user:
                 raise ConflictError(f"User with email '{user_data.email}' already exists")
 
-            hashed_password = get_password_hash(user_data.password)
+            try:
+                hashed_password = get_password_hash(user_data.password)
+            except Exception as e:
+                logger.error(f"Password hashing failed: {e}")
+                raise ConflictError("Failed to process registration. Please try again.")
+
             user_dict = user_data.model_dump(exclude={"password"})
             user_dict["hashed_password"] = hashed_password
 
             user = await user_repo.create(user_dict)
-            logger.info(f"User registered: {user.email}")
+
+            org_repo = OrganizationRepository(Organization, db)
+            org_name = f"{user_data.full_name}'s Organization"
+            org_slug = normalize_slug(org_name)
+            org = await org_repo.create({
+                "name": org_name,
+                "slug": org_slug,
+                "description": f"Organization for {user_data.full_name}",
+                "contact_email": user_data.email,
+            })
+
+            await user_repo.update(user, {"organization_id": str(org.id)})
+
+            logger.info(f"User registered: {user.email} with org: {org.id}")
             return UserResponse.model_validate(user)
 
     async def login(self, login_data: UserLogin, request_ip: str = None, user_agent: str = None) -> dict:

@@ -1,7 +1,7 @@
 export type Page = 
   | 'home' | 'docs' | 'pricing' | 'contact' | 'features'
   | 'login' | 'register' | 'forgot-password' | 'profile' | 'notifications'
-  | 'dashboard' | 'templates' | 'visual-editor' 
+  | 'dashboard' | 'templates' 
   | 'participants' | 'generate' | 'certificates' 
   | 'verification' | 'analytics' | 'organization' | 'users' | 'settings';
 
@@ -22,6 +22,7 @@ export interface CertificateTemplate {
   created_at: string;
   updated_at: string;
   elements: CanvasElement[];
+  placeholders: TemplatePlaceholder[];
   category?: string;
   tags?: string[];
   backdropUrl?: string;
@@ -42,6 +43,8 @@ export interface TemplatePlaceholder {
   font_size: number;
   font_weight: string;
   font_color: string;
+  font_file_url?: string;
+  font_file_path?: string;
   alignment: string;
   rotation: number;
   opacity: number;
@@ -145,4 +148,13 @@ export interface CanvasElement {
   align: string;
   shapeType?: string;
   isLocked?: boolean;
+}
+
+export interface AnalysisResult {
+  id: string;
+  templateId: string;
+  placeholders: TemplatePlaceholder[];
+  confidence: number;
+  analysis: any;
+  status: 'pending' | 'success' | 'error';
 }

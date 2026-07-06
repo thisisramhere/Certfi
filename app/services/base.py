@@ -131,22 +131,43 @@ class OrganizationRepository(BaseRepository):
 
 
 class TemplateRepository(BaseRepository):
+    async def get(self, id: Any) -> Optional[Any]:
+        from sqlalchemy.orm import selectinload
+        result = await self.db.execute(
+            select(self.model).options(
+                selectinload(self.model.placeholders)
+            ).where(self.model.id == id)
+        )
+        obj = result.scalars().first()
+        if not obj:
+            raise NotFoundError(f"{self.model.__tablename__} not found")
+        return obj
+
     async def get_by_owner(self, owner_id: Any, is_active: bool = True) -> List[Any]:
-        query = select(self.model).where(
+        from sqlalchemy.orm import selectinload
+        query = select(self.model).options(
+            selectinload(self.model.placeholders)
+        ).where(
             and_(self.model.owner_id == owner_id, self.model.is_active == is_active)
         )
         result = await self.db.execute(query)
         return result.scalars().all()
 
     async def get_by_organization(self, organization_id: Any, is_active: bool = True) -> List[Any]:
-        query = select(self.model).where(
+        from sqlalchemy.orm import selectinload
+        query = select(self.model).options(
+            selectinload(self.model.placeholders)
+        ).where(
             and_(self.model.organization_id == organization_id, self.model.is_active == is_active)
         )
         result = await self.db.execute(query)
         return result.scalars().all()
 
     async def get_default_template(self, organization_id: Any) -> Optional[Any]:
-        query = select(self.model).where(
+        from sqlalchemy.orm import selectinload
+        query = select(self.model).options(
+            selectinload(self.model.placeholders)
+        ).where(
             and_(self.model.organization_id == organization_id, self.model.is_default == True, self.model.is_active == True)
         )
         result = await self.db.execute(query)
@@ -169,19 +190,63 @@ class TemplatePlaceholderRepository(BaseRepository):
 
     async def replace_placeholders(self, template_id: Any, placeholders_data: List[Dict]) -> List[Any]:
         from sqlalchemy import delete as sql_delete
+        import logging
+        _logger = logging.getLogger(__name__)
+
+        valid_columns = {c.name for c in self.model.__table__.columns}
+        _logger.info(
+            "replace_placeholders: template_id=%s, incoming=%d placeholders, valid_columns=%s",
+            template_id, len(placeholders_data), sorted(valid_columns),
+        )
+
         await self.db.execute(
             sql_delete(self.model).where(self.model.template_id == template_id)
         )
+
         if placeholders_data:
-            for pd in placeholders_data:
-                pd["template_id"] = template_id
-            placeholders = [self.model(**data) for data in placeholders_data]
+            cleaned = []
+            for idx, pd in enumerate(placeholders_data):
+                row = {}
+
+                font_rec = pd.pop("font_recommendation", None)
+                confidence = pd.pop("confidence_score", None)
+
+                for key, val in pd.items():
+                    if key in valid_columns and key not in ("id", "created_at", "updated_at"):
+                        row[key] = val
+
+                row["template_id"] = template_id
+
+                if "font_family" not in row:
+                    row["font_family"] = font_rec or "Helvetica"
+                row["font_size"] = int(round(float(row.pop("font_size", 12))))
+                row["font_weight"] = row.pop("font_weight", "normal")
+                row["font_color"] = row.pop("font_color", "#000000")
+
+                if "opacity" not in row:
+                    row["opacity"] = 1.0
+
+                for int_field in ("x", "y", "width", "height"):
+                    if int_field in row and row[int_field] is not None:
+                        row[int_field] = int(round(float(row[int_field])))
+                for float_field in ("rotation", "opacity"):
+                    if float_field in row and row[float_field] is not None:
+                        row[float_field] = float(row[float_field])
+
+                _logger.info(
+                    "replace_placeholders [%d]: type=%s, x=%s, y=%s, w=%s, h=%s, font=%s",
+                    idx, row.get("type"), row.get("x"), row.get("y"),
+                    row.get("width"), row.get("height"), row.get("font_family"),
+                )
+                cleaned.append(row)
+
+            placeholders = [self.model(**data) for data in cleaned]
             self.db.add_all(placeholders)
-            await self.db.commit()
-            for placeholder in placeholders:
-                await self.db.refresh(placeholder)
+            await self.db.flush()
+            _logger.info("replace_placeholders: flushed %d placeholders to session", len(placeholders))
             return placeholders
-        await self.db.commit()
+
+        _logger.info("replace_placeholders: no placeholders to insert")
         return []
 
 
@@ -194,7 +259,7 @@ class ParticipantRepository(BaseRepository):
         )
         return result.scalars().first()
 
-    async def list_participants(self, organization_id: Any, skip: int = 0, limit: int = 100, search: str = None) -> List[Any]:
+    async def list_participants(self, organization_id: Any, skip: int = 0, limit: Optional[int] = None, search: str = None) -> List[Any]:
         query = select(self.model).where(
             and_(self.model.organization_id == organization_id, self.model.deleted_at.is_(None))
         )
@@ -232,7 +297,7 @@ class CertificateRepository(BaseRepository):
         )
         return result.scalars().first()
 
-    async def list_certificates(self, organization_id: Any, status: CertificateStatus = None, skip: int = 0, limit: int = 100) -> List[Any]:
+    async def list_certificates(self, organization_id: Any, status: CertificateStatus = None, skip: int = 0, limit: Optional[int] = None) -> List[Any]:
         query = select(self.model).where(
             and_(self.model.organization_id == organization_id, self.model.deleted_at.is_(None))
         )

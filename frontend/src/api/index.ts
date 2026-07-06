@@ -6,3 +6,4 @@ export { certificatesAPI } from './certificates';
 export { analyticsAPI } from './analytics';
 export { verificationAPI } from './verification';
 export { usersAPI } from './users';
+export { fontsAPI } from './fonts';

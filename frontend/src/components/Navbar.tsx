@@ -37,7 +37,7 @@ export default function Navbar({
     switch (activePage) {
       case 'dashboard': return [root, 'Overview'];
       case 'templates': return [root, 'Templates'];
-      case 'visual-editor': return [root, 'Templates', 'Visual Template Editor'];
+      
       case 'participants': return [root, 'Participants'];
       case 'generate': return [root, 'Certificate Generator'];
       case 'certificates': return [root, 'Issued Certificates'];
@@ -116,22 +116,10 @@ export default function Navbar({
             <div className="absolute right-0 top-11 w-56 bg-white border border-neutral-200 rounded shadow-lg p-2 z-50 animate-in fade-in slide-in-from-top-2">
               <div className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest px-2 py-1">SWITCH ORG</div>
               <button 
-                onClick={() => { onSelectOrg('CertFI Japan Operations'); setShowOrgMenu(false); }}
+                onClick={() => { setShowOrgMenu(false); }}
                 className="w-full text-left p-2 hover:bg-neutral-50 text-xs rounded font-medium flex items-center gap-2"
               >
-                <span className="w-2 h-2 rounded-full bg-[#E52E40]"></span> CertFI Japan Operations
-              </button>
-              <button 
-                onClick={() => { onSelectOrg('Kyoto Tech Labs'); setShowOrgMenu(false); }}
-                className="w-full text-left p-2 hover:bg-neutral-50 text-xs rounded font-medium flex items-center gap-2"
-              >
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span> Kyoto Tech Labs
-              </button>
-              <button 
-                onClick={() => { onSelectOrg('Global Systems Tokyo'); setShowOrgMenu(false); }}
-                className="w-full text-left p-2 hover:bg-neutral-50 text-xs rounded font-medium flex items-center gap-2"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-600"></span> Global Systems Tokyo
+                <span className="w-2 h-2 rounded-full bg-[#E52E40]"></span> {orgName}
               </button>
             </div>
           )}

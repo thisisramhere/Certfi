@@ -113,6 +113,21 @@ class TemplateResponse(BaseSchema):
     created_at: datetime
     owner_id: uuid.UUID
     organization_id: uuid.UUID
+    backdropUrl: Optional[str] = None
+    placeholders: list["TemplatePlaceholderResponse"] = []
+
+    def model_post_init(self, __context):
+        if self.file_path:
+            import os
+            from app.core.config import settings
+            base_url = settings.BACKEND_URL.rstrip("/")
+            abs_storage = os.path.abspath(settings.STORAGE_BASE_PATH)
+            abs_file = os.path.abspath(self.file_path)
+            if abs_file.startswith(abs_storage):
+                rel = os.path.relpath(abs_file, abs_storage).replace("\\", "/")
+                self.backdropUrl = f"{base_url}/storage/{rel}"
+            else:
+                self.backdropUrl = f"{base_url}/storage/uploads/templates/{os.path.basename(self.file_path)}"
 
 
 class TemplatePlaceholderBase(BaseSchema):
@@ -126,6 +141,8 @@ class TemplatePlaceholderBase(BaseSchema):
     font_size: int = 12
     font_weight: str = "normal"
     font_color: str = "#000000"
+    font_file_url: Optional[str] = None
+    font_file_path: Optional[str] = None
     alignment: str = "left"
     rotation: float = 0.0
     opacity: float = 1.0
@@ -148,6 +165,8 @@ class TemplatePlaceholderUpdate(BaseSchema):
     font_size: Optional[int] = None
     font_weight: Optional[str] = None
     font_color: Optional[str] = None
+    font_file_url: Optional[str] = None
+    font_file_path: Optional[str] = None
     alignment: Optional[str] = None
     rotation: Optional[float] = None
     opacity: Optional[float] = None

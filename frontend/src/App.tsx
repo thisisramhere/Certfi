@@ -13,7 +13,6 @@ import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import DashboardOverview from './components/DashboardOverview';
 import TemplateManagement from './components/TemplateManagement';
-import VisualEditor from './components/VisualEditor';
 import ParticipantsManagement from './components/ParticipantsManagement';
 import CertificateGenerator from './components/CertificateGenerator';
 import CertificatesList from './components/CertificatesList';
@@ -30,11 +29,12 @@ export default function App() {
   
   // Roster and template database states
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+  
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [certificates, setCertificates] = useState<GeneratedCertificate[]>([]);
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [orgConfig, setOrgConfig] = useState<OrgConfig>({ name: 'CertFI Global Systems Ltd' });
+  const [orgConfig, setOrgConfig] = useState<OrgConfig>({ name: 'Certfi' });
 
   // Auth context
   const { user, isAuthenticated, isLoading, login, logout } = useAuth();
@@ -58,20 +58,27 @@ export default function App() {
       setDataLoading(true);
       setDataError(null);
 
-      // Load templates
-      const templatesData = await templatesAPI.getAll();
-      setTemplates(templatesData || []);
+      const results = await Promise.allSettled([
+        templatesAPI.getAll(),
+        participantsAPI.getAll(),
+        certificatesAPI.getAll()
+      ]);
 
-      // Load participants
-      const participantsData = await participantsAPI.getAll();
-      setParticipants(participantsData || []);
+      const templatesData = results[0].status === 'fulfilled' ? results[0].value : [];
+      setTemplates(templatesData);
 
-      // Load certificates
-      const certificatesData = await certificatesAPI.getAll();
-      setCertificates(certificatesData || []);
+      const participantsData = results[1].status === 'fulfilled' ? results[1].value : [];
+      setParticipants(participantsData);
+
+      const certificatesData = results[2].status === 'fulfilled' ? results[2].value : [];
+      setCertificates(certificatesData);
+
+      if (results.some(r => r.status === 'rejected')) {
+        console.warn('Some initial data failed to load', results.filter(r => r.status === 'rejected').map(r => r.reason));
+      }
 
     } catch (err) {
-      console.error('Error loading initial data:', err);
+      console.error('Unexpected error loading initial data:', err);
       setDataError('Failed to load application data');
     } finally {
       setDataLoading(false);
@@ -94,15 +101,8 @@ export default function App() {
   };
 
   // API integration handlers
-  const handleAddTemplate = async (templateData: any) => {
-    try {
-      const newTemplate = await templatesAPI.create(templateData);
-      setTemplates([newTemplate, ...templates]);
-      return newTemplate;
-    } catch (err) {
-      console.error('Error adding template:', err);
-      throw err;
-    }
+  const handleAddTemplate = (templateData: any) => {
+    setTemplates(prev => [templateData, ...prev]);
   };
 
   const handleUpdateTemplate = async (updatedTpl: CertificateTemplate) => {
@@ -119,29 +119,25 @@ export default function App() {
   const handleDeleteTemplate = async (id: string) => {
     try {
       await templatesAPI.delete(id);
-      setTemplates(templates.filter(t => t.id !== id));
+      setTemplates(prev => prev.filter(t => t.id !== id));
     } catch (err) {
       console.error('Error deleting template:', err);
       throw err;
     }
   };
 
-  const handleAddParticipant = async (participantData: any) => {
+  const handleAddParticipant = async (participantData: Participant) => {
+    console.log('ADDING TO STATE', participantData);
+    setParticipants(prev => [participantData, ...prev]);
+    return participantData;
+  };
+
+  const handleRefreshParticipants = async () => {
     try {
-      const newParticipant: Participant = {
-        id: `part_${Date.now()}`,
-        name: participantData.name,
-        email: participantData.email,
-        event: participantData.event,
-        position: participantData.position,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setParticipants([newParticipant, ...participants]);
-      return newParticipant;
+      const fresh = await participantsAPI.getAll();
+      setParticipants(fresh);
     } catch (err) {
-      console.error('Error adding participant:', err);
-      throw err;
+      console.error('Failed to refresh participants:', err);
     }
   };
 
@@ -232,7 +228,7 @@ export default function App() {
     setCurrentPage(page);
   };
 
-  const selectedTemplateForEditor = templates.find(t => t.id === templates[0]?.id) || null;
+  
 
   // Redirect authenticated users away from auth pages
   useEffect(() => {
@@ -243,7 +239,7 @@ export default function App() {
 
   // Redirect unauthenticated users away from protected pages
   useEffect(() => {
-    const protectedPages = ['dashboard', 'templates', 'visual-editor', 'participants', 'generate', 'certificates', 'verification', 'analytics', 'organization', 'users', 'settings'];
+    const protectedPages = ['dashboard', 'templates', 'participants', 'generate', 'certificates', 'verification', 'analytics', 'organization', 'users', 'settings'];
     if (!isAuthenticated && protectedPages.includes(currentPage)) {
       setCurrentPage('login');
     }
@@ -277,12 +273,12 @@ export default function App() {
     <div id="certfi-app-viewport" className="min-h-screen bg-neutral-50 flex flex-col justify-between text-neutral-800 font-sans selection:bg-[#E52E40]/10 selection:text-[#E52E40]">
       
       {/* 1. PUBLIC MARKETING WEBSITE ROUTING */}
-      {!isAuthenticated && ['home', 'docs', 'pricing', 'contact', 'login', 'register', 'forgot-password'].includes(currentPage) && (
+      {!isAuthenticated && ['home', 'login', 'register', 'forgot-password'].includes(currentPage) && (
         <div className="flex-1 flex flex-col justify-between">
           
           {/* Main Website views / Auth portals wrapper */}
-          {['home', 'docs', 'pricing', 'contact'].includes(currentPage) ? (
-            <PublicWebsite activeSubPage={currentPage as any} onNavigate={handleNavigate} />
+          {currentPage === 'home' ? (
+            <PublicWebsite onNavigate={handleNavigate} />
           ) : (
             <AuthPages 
               initialScreen={currentPage as any} 
@@ -341,17 +337,10 @@ export default function App() {
                   templates={templates} 
                   onAddTemplate={handleAddTemplate} 
                   onDeleteTemplate={handleDeleteTemplate}
+                  onTemplatesUpdate={(tpls) => setTemplates(tpls)}
                   onSelectTemplate={(tpl) => {
-                    handleNavigate('visual-editor');
+                    handleNavigate('templates');
                   }}
-                />
-              )}
-
-              {currentPage === 'visual-editor' && (
-                <VisualEditor 
-                  onNavigate={handleNavigate} 
-                  selectedTemplate={selectedTemplateForEditor} 
-                  onUpdateTemplate={handleUpdateTemplate}
                 />
               )}
 
@@ -361,6 +350,7 @@ export default function App() {
                   participants={participants} 
                   onAddParticipant={handleAddParticipant} 
                   onDeleteParticipant={handleDeleteParticipant}
+                  onRefreshParticipants={handleRefreshParticipants}
                 />
               )}
 

@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -87,3 +88,14 @@ async def root():
 
 
 app.include_router(main_router, prefix=settings.API_PREFIX)
+
+import os
+from fastapi.responses import FileResponse
+
+storage_path = os.path.abspath(settings.STORAGE_BASE_PATH)
+os.makedirs(os.path.join(storage_path, "uploads", "templates"), exist_ok=True)
+os.makedirs(os.path.join(storage_path, "uploads", "participants"), exist_ok=True)
+os.makedirs(os.path.join(storage_path, "fonts"), exist_ok=True)
+os.makedirs(os.path.join(storage_path, "generated"), exist_ok=True)
+
+app.mount("/storage", StaticFiles(directory=storage_path), name="storage")

@@ -26,15 +26,8 @@ class TemplateFileType(str, enum.Enum):
 
 class PlaceholderType(str, enum.Enum):
     NAME = "name"
-    EMAIL = "email"
-    EVENT = "event"
-    POSITION = "position"
-    DATE = "date"
     CERTIFICATE_ID = "certificate_id"
     QR_CODE = "qr_code"
-    SIGNATURE = "signature"
-    WATERMARK = "watermark"
-    CUSTOM = "custom"
 
 
 class CertificateStatus(str, enum.Enum):
@@ -150,6 +143,8 @@ class TemplatePlaceholder(Base):
     font_size: Mapped[int] = mapped_column(Integer, default=12, nullable=False)
     font_weight: Mapped[str] = mapped_column(String(20), default="normal", nullable=False)
     font_color: Mapped[str] = mapped_column(String(7), default="#000000", nullable=False)
+    font_file_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    font_file_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     alignment: Mapped[str] = mapped_column(String(20), default="left", nullable=False)
     rotation: Mapped[float] = mapped_column(default=0.0, nullable=False)
     opacity: Mapped[float] = mapped_column(default=1.0, nullable=False)

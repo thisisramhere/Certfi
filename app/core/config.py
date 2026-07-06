@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     WORKERS: int = 4
+    BACKEND_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     DATABASE_URL: str = Field(..., description="PostgreSQL async connection string")
     DATABASE_POOL_SIZE: int = 20
@@ -34,7 +36,7 @@ class Settings(BaseSettings):
 
     BCRYPT_ROUNDS: int = 12
 
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "https://certfi.vercel.app"]
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
@@ -56,7 +58,7 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "noreply@certiflow.com"
     EMAIL_FROM_NAME: str = "CertiFlow"
 
-    VERIFICATION_BASE_URL: str = "https://certiflow.com/verify"
+    VERIFICATION_BASE_URL: str = "https://certfi.vercel.app"
 
     DEFAULT_WATERMARK_OPACITY: float = 0.3
     DEFAULT_WATERMARK_TEXT: str = "CertiFlow"

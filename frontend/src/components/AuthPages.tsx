@@ -32,7 +32,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
     try {
       await onLoginSuccess({ email, password });
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || 'Login failed. Please check your credentials.';
+      const msg = err?.response?.data?.message || err?.response?.data?.detail || 'Login failed. Please check your credentials.';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -64,7 +64,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
         setConfirmPassword('');
       }, 2000);
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || 'Registration failed. Email may already be in use.';
+      const msg = err?.response?.data?.message || err?.response?.data?.detail || 'Registration failed. Please try again.';
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -112,7 +112,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
             </div>
             {screen === 'login' && (
               <>
-                <h1 className="text-2xl font-bold font-display text-neutral-900">Sign In to CertFI</h1>
+                <h1 className="text-2xl font-bold font-display text-neutral-900">Sign In to Certfi</h1>
                 <p className="text-xs text-neutral-400 mt-1">Access your cryptographic template generator suite.</p>
               </>
             )}
@@ -156,7 +156,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
                     required 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. ramkiranmohan1759@gmail.com" 
+                    placeholder="e.g. johndoe@gmail.com" 
                     className="w-full bg-neutral-50 border border-neutral-200 focus:border-[#E52E40] outline-none p-3 pl-10 rounded text-sm transition-colors font-mono"
                   />
                 </div>
@@ -206,25 +206,8 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
                 {loading ? 'Authenticating Workspace...' : 'Secure Login'} <ArrowRight className="w-4 h-4" />
               </button>
 
-              <div className="relative my-6 text-center">
-                <hr className="border-neutral-100" />
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-white px-3 text-[10px] font-mono text-neutral-400 uppercase">OR CONTINUING WITH</span>
-              </div>
-
-              {/* Mock OAuth option */}
-              <button 
-                type="button" 
-                onClick={() => onLoginSuccess({ email: 'demo@certfi.com', password: 'demo123' })}
-                className="w-full border border-neutral-200 hover:border-[#0F0F0F] bg-white text-neutral-700 text-xs font-semibold p-3 rounded flex items-center justify-center gap-2 transition-colors"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.579-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.11c-2.071-1.928-4.754-3.11-8.274-3.11-6.627 0-12 5.373-12 12s5.373 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.188-1.983H12.24z"/>
-                </svg>
-                <span>Continue with Corporate Google account</span>
-              </button>
-
               <p className="text-xs text-neutral-500 text-center mt-6">
-                New to CertFI?{' '}
+                New to Certfi?{' '}
                 <button type="button" onClick={() => setScreen('register')} className="text-[#E52E40] font-bold hover:underline">
                   Configure Workspace
                 </button>
@@ -244,7 +227,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
                     required 
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="e.g. Kyoto Academy of Technology" 
+                    placeholder="e.g. Acme Inc" 
                     className="w-full bg-neutral-50 border border-neutral-200 focus:border-[#E52E40] outline-none p-3 pl-10 rounded text-sm transition-colors"
                   />
                 </div>
@@ -259,7 +242,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
                     required 
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Ram Kiran Mohan" 
+                    placeholder="e.g. John Doe" 
                     className="w-full bg-neutral-50 border border-neutral-200 focus:border-[#E52E40] outline-none p-3 pl-10 rounded text-sm transition-colors"
                   />
                 </div>
@@ -274,7 +257,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
                     required 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. ramkiranmohan1759@gmail.com" 
+                    placeholder="e.g. johndoe@gmail.com" 
                     className="w-full bg-neutral-50 border border-neutral-200 focus:border-[#E52E40] outline-none p-3 pl-10 rounded text-sm transition-colors font-mono"
                   />
                 </div>
@@ -334,7 +317,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
                     required 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. ramkiranmohan1759@gmail.com" 
+                    placeholder="e.g. johndoe@gmail.com" 
                     className="w-full bg-neutral-50 border border-neutral-200 focus:border-[#E52E40] outline-none p-3 pl-10 rounded text-sm transition-colors font-mono"
                   />
                 </div>
@@ -362,7 +345,7 @@ export default function AuthPages({ initialScreen, onNavigate, onLoginSuccess }:
 
       {/* Footer message */}
       <footer className="p-6 text-center text-xs text-neutral-400 border-t border-neutral-100 font-mono">
-        © 2026 CertFI Ledger Systems. Cryptographic credentials active.
+        © 2026 Certfi
       </footer>
 
     </div>

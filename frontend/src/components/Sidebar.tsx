@@ -50,7 +50,7 @@ export default function Sidebar({
               <span className="w-7 h-7 bg-[#E52E40] text-white flex items-center justify-center font-mono text-sm font-bold rounded">
                 F
               </span>
-              <span>Cert<span className="text-[#E52E40]">FI</span></span>
+              <span>Cert<span className="text-[#E52E40]">fi</span></span>
               <span className="text-[9px] font-mono text-neutral-500 border border-neutral-800 px-1 py-0.5 rounded uppercase shrink-0">SAAS</span>
             </div>
           ) : (
@@ -80,7 +80,7 @@ export default function Sidebar({
         <nav className="p-3 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activePage === item.id || (item.id === 'templates' && activePage === 'visual-editor');
+            const isActive = activePage === item.id;
             return (
               <button
                 key={item.id}

@@ -237,10 +237,10 @@ export default function CertificatesList({
                   <div className="absolute inset-0 border-4 border-double border-neutral-800 opacity-20 pointer-events-none"></div>
                   
                   <div>
-                    <span className="text-[8px] font-mono tracking-widest text-neutral-400 block uppercase">Kyoto System Certificate</span>
+                    <span className="text-[8px] font-mono tracking-widest text-neutral-400 block uppercase">Certificate</span>
                     <h2 className="text-lg font-bold text-[#0F0F0F] mt-3">{selectedCert.participant_id}</h2>
                     <p className="text-[9px] text-neutral-400 max-w-xs mx-auto mt-1 leading-normal">
-                      for high achievements demonstrating professional proficiency.
+                      Certificate preview
                     </p>
                   </div>
 

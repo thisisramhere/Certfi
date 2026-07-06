@@ -30,7 +30,7 @@ export default function DashboardOverview({
   const totalIssued = summary?.total_certificates ?? certificates.length;
   const activeTemplates = templates.length;
   const verifiedCerts = summary?.total_verifications ?? certificates.filter(c => c.status === 'generated' || c.status === 'sent').length;
-  const deliverySla = totalIssued > 0 ? 99.8 : 0;
+  const deliverySla = summary ? 99.8 : null;
 
   const handleRefreshData = () => {
     setRefreshing(true);
@@ -109,8 +109,8 @@ export default function DashboardOverview({
         <div className="bg-white border border-neutral-200 p-5 rounded-lg flex items-center justify-between hover:border-[#E52E40] transition-colors">
           <div className="space-y-1">
             <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">EMAIL DISPATCH SLA</span>
-            <span className="text-2xl font-extrabold text-neutral-900 font-display">{deliverySla}%</span>
-            <span className="text-[10px] font-mono text-emerald-600 block">Optimal server ping</span>
+            <span className="text-2xl font-extrabold text-neutral-900 font-display">{deliverySla !== null ? `${deliverySla}%` : 'N/A'}</span>
+            <span className="text-[10px] font-mono text-emerald-600 block">{deliverySla !== null ? 'Optimal server ping' : 'Awaiting analytics data'}</span>
           </div>
           <div className="w-10 h-10 bg-neutral-100 flex items-center justify-center rounded text-neutral-700">
             <CheckSquare className="w-5 h-5" />
@@ -132,46 +132,24 @@ export default function DashboardOverview({
             <span className="bg-neutral-100 text-neutral-800 font-mono text-[9px] px-2 py-1 rounded">UPDATED SECONDS AGO</span>
           </div>
 
-          {/* SVG line and area chart */}
-          <div className="relative w-full h-64 bg-neutral-50/50 border border-neutral-100 rounded overflow-hidden flex flex-col justify-between p-4">
-            
-            {/* Chart Grid Lines */}
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 p-6">
-              <hr className="border-neutral-400 border-dashed" />
-              <hr className="border-neutral-400 border-dashed" />
-              <hr className="border-neutral-400 border-dashed" />
-              <hr className="border-neutral-400 border-dashed" />
+          {/* Chart area - shows empty state when no analytics data */}
+          {summary ? (
+            <div className="w-full h-64 bg-neutral-50/50 border border-neutral-100 rounded flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <TrendingUp className="w-8 h-8 text-neutral-300 mx-auto" />
+                <p className="text-xs font-semibold text-neutral-500">No analytics data available</p>
+                <p className="text-[10px] text-neutral-400">Generate certificates to see verification trends</p>
+              </div>
             </div>
-
-            {/* SVG Vector Path Chart */}
-            <div className="absolute inset-0 p-6">
-              <svg viewBox="0 0 500 200" className="w-full h-full" preserveAspectRatio="none">
-                {/* Area Gradient (Vermillion Red tint) */}
-                <path d="M 0 170 Q 80 120 160 140 T 320 80 T 420 40 T 500 20 L 500 200 L 0 200 Z" fill="rgba(229,46,64,0.06)" />
-                {/* Main line */}
-                <path d="M 0 170 Q 80 120 160 140 T 320 80 T 420 40 T 500 20" fill="none" stroke="#E52E40" stroke-width="3" stroke-linecap="round" />
-                
-                {/* Data Points */}
-                <circle cx="80" cy="130" r="4" fill="#0F0F0F" stroke="#FFFFFF" stroke-width="1.5" />
-                <circle cx="160" cy="140" r="4" fill="#0F0F0F" stroke="#FFFFFF" stroke-width="1.5" />
-                <circle cx="320" cy="80" r="4" fill="#E52E40" stroke="#FFFFFF" stroke-width="1.5" />
-                <circle cx="420" cy="40" r="4" fill="#E52E40" stroke="#FFFFFF" stroke-width="1.5" />
-                <circle cx="500" cy="20" r="5" fill="#E52E40" stroke="#0F0F0F" stroke-width="2" />
-              </svg>
+          ) : (
+            <div className="w-full h-64 bg-neutral-50/50 border border-neutral-100 rounded flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <TrendingUp className="w-8 h-8 text-neutral-300 mx-auto" />
+                <p className="text-xs font-semibold text-neutral-500">No analytics data available</p>
+                <p className="text-[10px] text-neutral-400">Generate certificates to see verification trends</p>
+              </div>
             </div>
-
-            {/* Labels overlay */}
-            <div className="flex justify-between text-[9px] font-mono text-neutral-400 z-10 select-none">
-              <span>Mon</span>
-              <span>Tue</span>
-              <span>Wed</span>
-              <span>Thu</span>
-              <span>Fri</span>
-              <span>Sat</span>
-              <span>Sun</span>
-            </div>
-
-          </div>
+          )}
 
           <div className="flex items-center justify-between text-xs font-mono text-neutral-500 pt-2">
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#E52E40] rounded inline-block"></span> Verified Session Hits</span>
@@ -328,7 +306,7 @@ export default function DashboardOverview({
           <div className="p-3 bg-rose-50/50 border border-rose-100 rounded text-[11px] text-neutral-600 leading-relaxed flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-[#E52E40] shrink-0 mt-0.5" />
             <span>
-              CertFI automation workers scan linked sheet files every 30 minutes. Ensure variables match the CSV mapping variables perfectly.
+              Certfi automation workers scan linked sheet files every 30 minutes. Ensure variables match the CSV mapping variables perfectly.
             </span>
           </div>
 

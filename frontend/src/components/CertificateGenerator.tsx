@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Page, CertificateTemplate, Participant, GeneratedCertificate } from '../types';
+import { Page, CertificateTemplate, Participant, TemplatePlaceholder } from '../types';
 import { certificatesAPI } from '../api';
 import { useToast } from './Toast';
 import { 
@@ -14,6 +14,19 @@ interface CertificateGeneratorProps {
   onGenerateCertificates: (certs: any[]) => void;
 }
 
+function renderPlaceholderContent(ph: TemplatePlaceholder, participant: Participant | undefined): React.ReactNode {
+  switch (ph.type) {
+    case 'name':
+      return <span className="block leading-tight font-bold">{participant?.name || 'Sample Name'}</span>;
+    case 'certificate_id':
+      return <span className="block leading-tight font-mono text-xs">CERT-{Date.now().toString(36).toUpperCase()}</span>;
+    case 'qr_code':
+      return <QrCode className="w-full h-full p-0.5" />;
+    default:
+      return ph.custom_key || null;
+  }
+}
+
 export default function CertificateGenerator({
   onNavigate,
   templates,
@@ -25,13 +38,13 @@ export default function CertificateGenerator({
   
   // Selection states
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templates[0]?.id || '');
-  const [targetClass, setTargetClass] = useState<string>('Cloud Architect Masterclass 2026');
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
   
   // Custom overlays
   const [includeQr, setIncludeQr] = useState(true);
   const [includeWatermark, setIncludeWatermark] = useState(false);
   const [outputFormat, setOutputFormat] = useState<'ZIP_PDF' | 'ZIP_PNG' | 'API_URL'>('ZIP_PDF');
-  const [namingFormat, setNamingFormat] = useState('{{NAME}}_CERT_Kyoto2026');
+  const [namingFormat, setNamingFormat] = useState('{{NAME}}_CERT');
 
   // Generation progress
   const [progress, setProgress] = useState(0);
@@ -41,20 +54,30 @@ export default function CertificateGenerator({
   const { addToast } = useToast();
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-  const matchingParticipantsCount = participants.filter(p => p.event === targetClass).length;
+  const activeParticipants = selectedParticipantIds.length > 0
+    ? participants.filter(p => selectedParticipantIds.includes(p.id))
+    : participants;
+  const matchingParticipantsCount = activeParticipants.length;
+  const previewParticipant = activeParticipants[0] || participants[0];
+
+  const toggleParticipant = (id: string) => {
+    setSelectedParticipantIds(prev =>
+      prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
+    );
+  };
 
   const handleStartGeneration = () => {
     setWizardStep(5);
     setGenerating(true);
     setProgress(0);
-    setGenLogs(['[04:33:20] Initializing bulk generation cluster...']);
+    setGenLogs(['[04:33:20] Initializing bulk generation...']);
 
     const logsArray = [
       '[04:33:21] Fetching secure SHA-256 ledger certificates...',
-      '[04:33:22] Mapping dynamic placeholder {{PARTICIPANT_NAME}} coordinate tables...',
+      '[04:33:22] Mapping dynamic placeholder coordinate tables...',
       '[04:33:23] Resolving cryptographic QR coordinate blocks...',
       '[04:33:24] Generating hi-res PDF vector render buffers...',
-      '[04:33:25] Compiling ZIP package archive CertFI_Kyoto2026.zip...',
+      '[04:33:25] Compiling ZIP package archive...',
       '[04:33:26] Writing hash records to public-facing audit ledger...',
       '[04:33:27] Bulk processing completed successfully!'
     ];
@@ -65,7 +88,6 @@ export default function CertificateGenerator({
         if (prev >= 100) {
           clearInterval(interval);
           
-          const activeParticipants = participants.filter(p => p.event === targetClass);
           const certsPayload = activeParticipants.map(ap => ({
             participant_id: ap.id,
             template_id: selectedTemplateId,
@@ -76,9 +98,23 @@ export default function CertificateGenerator({
           }));
           
           certificatesAPI.generate(certsPayload)
-            .then(generatedCerts => {
+            .then(async generatedCerts => {
               onGenerateCertificates(generatedCerts);
               setGenerating(false);
+              try {
+                const orgId = localStorage.getItem('current_user') ? JSON.parse(localStorage.getItem('current_user')!).organization_id : '';
+                const blob = await certificatesAPI.downloadAll(orgId);
+                const url = window.URL.createObjectURL(new Blob([blob]));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'certificates.zip';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+              } catch (dlErr) {
+                console.error('Auto-download failed:', dlErr);
+              }
             })
             .catch(err => {
               console.error('Certificate generation failed:', err);
@@ -143,7 +179,7 @@ export default function CertificateGenerator({
             disabled={!selectedTemplateId}
             className={`py-3 font-semibold ${wizardStep === 2 ? 'bg-white text-[#E52E40] border-b-2 border-[#E52E40]' : 'text-neutral-500 hover:text-neutral-900'}`}
           >
-            2. RECIPIENT CLASS
+            2. SELECT PARTICIPANTS
           </button>
           <button 
             onClick={() => setWizardStep(3)}
@@ -175,12 +211,18 @@ export default function CertificateGenerator({
                   onClick={() => setSelectedTemplateId(tpl.id)}
                   className={`p-4 border rounded-lg cursor-pointer transition-all flex gap-4 items-start ${selectedTemplateId === tpl.id ? 'border-[#E52E40] bg-rose-50/10 shadow-sm' : 'border-neutral-200 hover:border-neutral-400'}`}
                 >
-                  <img src={tpl.backdropUrl} referrerPolicy="no-referrer" alt={tpl.name} className="w-20 aspect-[1.41/1] object-contain border border-neutral-200 rounded shrink-0 bg-white" />
+                  {tpl.backdropUrl ? (
+                    <img src={tpl.backdropUrl} referrerPolicy="no-referrer" alt={tpl.name} className="w-20 aspect-[1.41/1] object-contain border border-neutral-200 rounded shrink-0 bg-white" />
+                  ) : (
+                    <div className="w-20 aspect-[1.41/1] flex items-center justify-center border border-neutral-200 rounded shrink-0 bg-neutral-50">
+                      <span className="text-[8px] text-neutral-400">No img</span>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <h3 className="text-xs font-bold text-neutral-900 leading-tight">{tpl.name}</h3>
                     <p className="text-[10px] text-neutral-500 line-clamp-2">{tpl.description}</p>
                     <span className="inline-block bg-neutral-100 text-neutral-600 font-mono text-[8px] px-1.5 py-0.5 rounded">
-                      {tpl.elements.length} dynamic tags
+                      {(tpl.elements ?? []).length} dynamic tags
                     </span>
                   </div>
                 </div>
@@ -189,33 +231,48 @@ export default function CertificateGenerator({
           </div>
         )}
 
-        {/* STEP 2: SELECT RECIPIENTS TARGET CLASS */}
+        {/* STEP 2: SELECT PARTICIPANTS */}
         {wizardStep === 2 && (
           <div className="space-y-4">
-            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block font-bold">CHOOSE ENROLLMENT CLASS</span>
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block font-bold">CHOOSE RECIPIENTS</span>
             
-            <div className="space-y-3">
-              <label className="block text-xs font-mono font-semibold uppercase text-neutral-500 mb-1">SELECT EVENTS WORKSHOP</label>
-              <select 
-                value={targetClass} 
-                onChange={(e) => setTargetClass(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 p-3 rounded text-xs outline-none"
-              >
-                <option value="Cloud Architect Masterclass 2026">Cloud Architect Masterclass 2026 (Japan Academy)</option>
-                <option value="SaaS Security & Governance Workshop">SaaS Security & Governance Workshop (Cyber Defense Corp)</option>
-                <option value="Advanced Design Systems Summit">Advanced Design Systems Summit (Innovate Studio)</option>
-              </select>
+            <div className="space-y-2 max-h-80 overflow-y-auto border border-neutral-200 rounded-lg divide-y divide-neutral-100">
+              {participants.length === 0 ? (
+                <div className="p-6 text-center text-neutral-400 text-xs">No participants found. Add participants first.</div>
+              ) : (
+                participants.map(p => {
+                  const isSelected = selectedParticipantIds.includes(p.id) || selectedParticipantIds.length === 0;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => toggleParticipant(p.id)}
+                      className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-neutral-50 ${isSelected ? 'bg-rose-50/30' : 'opacity-60'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleParticipant(p.id)}
+                        className="accent-[#E52E40] w-4 h-4 cursor-pointer shrink-0"
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-neutral-900 truncate">{p.name}</div>
+                        <div className="text-[10px] text-neutral-500 truncate">{p.email}</div>
+                      </div>
+                      {p.event && (
+                        <span className="text-[9px] font-mono text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded shrink-0">{p.event}</span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
 
-              {/* Matching diagnostics */}
-              <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-neutral-800">Roster Matching Telemetry</div>
-                  <div className="text-[10px] text-neutral-400">Validated candidates synced with this registry.</div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xl font-black text-[#E52E40]">{matchingParticipantsCount}</span>
-                  <span className="text-neutral-500 text-xs"> candidates</span>
-                </div>
+            <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg flex items-center justify-between">
+              <div className="text-xs font-bold text-neutral-800">Selected Recipients</div>
+              <div className="text-right">
+                <span className="text-xl font-black text-[#E52E40]">{matchingParticipantsCount}</span>
+                <span className="text-neutral-500 text-xs ml-1">of {participants.length}</span>
               </div>
             </div>
           </div>
@@ -240,7 +297,7 @@ export default function CertificateGenerator({
                 <div className="flex items-center justify-between p-3 border border-neutral-100 rounded bg-[#FAF9F6]">
                   <div>
                     <div className="font-bold text-neutral-800">Include Anti-Tamper Watermark</div>
-                    <p className="text-[10px] text-neutral-400 leading-tight">Underlay translucent CertFI compliance watermark</p>
+                    <p className="text-[10px] text-neutral-400 leading-tight">Underlay translucent Certfi compliance watermark</p>
                   </div>
                   <input type="checkbox" checked={includeWatermark} onChange={(e) => setIncludeWatermark(e.target.checked)} className="accent-[#E52E40] w-4 h-4 cursor-pointer" />
                 </div>
@@ -262,7 +319,7 @@ export default function CertificateGenerator({
                     type="text" 
                     value={namingFormat}
                     onChange={(e) => setNamingFormat(e.target.value)}
-                    placeholder="{{NAME}}_CERT_Kyoto2026"
+                    placeholder="{{NAME}}_CERT"
                     className="w-full bg-neutral-50 border border-neutral-200 p-2.5 rounded font-mono text-xs text-[#E52E40] outline-none"
                   />
                 </div>
@@ -275,33 +332,46 @@ export default function CertificateGenerator({
         {/* STEP 4: LIVE MERGE PREVIEW */}
         {wizardStep === 4 && (
           <div className="space-y-4">
-            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block font-bold">VERIFY MERGED SPECIMEN ACCORDING TO VARIABLES</span>
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block font-bold">LIVE MERGE PREVIEW</span>
             
-            {/* Specimen rendering mockup */}
-            <div className="relative max-w-lg mx-auto bg-[#FDFCF7] border-2 border-neutral-800 p-6 rounded shadow-[4px_4px_0px_0px_rgba(15,15,15,1)] text-center space-y-4 overflow-hidden aspect-[1.41/1]">
-              <div className="absolute inset-0 border-4 border-double border-neutral-800 opacity-25 pointer-events-none"></div>
+            {(() => { console.log({ template: selectedTemplate?.id, placeholderCount: (selectedTemplate?.placeholders ?? []).length, placeholders: selectedTemplate?.placeholders }); return null; })()}
+            
+            {/* Certificate preview with saved AI placeholders */}
+            <div className="relative max-w-lg mx-auto overflow-hidden aspect-[1.41/1] border-2 border-neutral-800 rounded shadow-[4px_4px_0px_0px_rgba(15,15,15,1)] bg-white">
+              {selectedTemplate?.backdropUrl && (
+                <img src={selectedTemplate.backdropUrl} alt={selectedTemplate.name} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+              )}
               
-              <div className="text-[10px] font-mono tracking-widest text-neutral-400 uppercase">SPECIMEN PREVIEW // kyoto_roster[0]</div>
-              <h2 className="text-2xl font-bold font-display text-neutral-900 mt-2">Sora Takahashi</h2>
-              <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
-                has successfully demonstrated SaaS Cloud Infrastructure Mastery during the intensive Cloud Architect Masterclass 2026.
-              </p>
-              
-              <div className="flex items-center justify-between px-8 pt-8">
-                <div className="text-left font-mono text-[8px] text-neutral-400">
-                  <div>ID: CERT-2026-X99</div>
-                  <div>HASH: SYNCED</div>
-                </div>
-                {includeQr && (
-                  <div className="w-12 h-12 border border-neutral-200 p-1 bg-white rounded flex items-center justify-center">
-                    <QrCode className="w-10 h-10 text-neutral-800" />
+              {(selectedTemplate?.placeholders ?? []).length > 0 ? (
+                selectedTemplate!.placeholders.map(ph => (
+                  <div key={ph.id} style={{
+                    position: 'absolute',
+                    left: `${ph.x}%`,
+                    top: `${ph.y}%`,
+                    width: `${ph.width}%`,
+                    height: `${ph.height}%`,
+                    fontFamily: ph.font_family,
+                    fontSize: `${ph.font_size}px`,
+                    fontWeight: ph.font_weight,
+                    color: ph.font_color,
+                    textAlign: ph.alignment as any,
+                    transform: ph.rotation ? `rotate(${ph.rotation}deg)` : undefined,
+                    opacity: ph.opacity,
+                    overflow: 'hidden',
+                    pointerEvents: 'none',
+                  }}>
+                    {renderPlaceholderContent(ph, previewParticipant)}
                   </div>
-                )}
-              </div>
+                ))
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center p-8">
+                  <div className="text-center text-neutral-400 text-xs">No placeholders defined for this template.</div>
+                </div>
+              )}
             </div>
 
             <div className="p-3 bg-neutral-50 border border-neutral-200 rounded text-center text-[11px] text-neutral-500">
-              Template Backdrop: <strong>Modern Swiss Accent</strong> | Total Recipients: <strong>{matchingParticipantsCount} candidates</strong>
+              Template: <strong>{selectedTemplate?.name || 'Not selected'}</strong> | Total Recipients: <strong>{matchingParticipantsCount} candidates</strong>
             </div>
 
           </div>
@@ -349,7 +419,7 @@ export default function CertificateGenerator({
                 <div className="p-4 bg-[#FAF9F6] border border-neutral-200 rounded-lg max-w-md mx-auto text-left space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-neutral-800">
                     <span>Generated File:</span>
-                    <span className="font-mono text-[#E52E40]">CertFI_Archive_Kyoto2026.zip</span>
+                    <span className="font-mono text-[#E52E40]">certificates.zip</span>
                   </div>
                   <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
                     <span>Volume count:</span>
