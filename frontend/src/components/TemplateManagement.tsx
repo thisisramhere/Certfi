@@ -297,15 +297,33 @@ export default function TemplateManagement({
 
   const acceptAIPlacement = async () => {
     if (!currentTemplate || !analysis || isSaving) return;
-    
+
+    const img = document.querySelector('#ai-preview-container img') as HTMLImageElement | null;
+    const naturalWidth = img?.naturalWidth || currentTemplate.width;
+    const naturalHeight = img?.naturalHeight || currentTemplate.height;
+
+    const normalizedPlaceholders = analysis.placeholders.map(p => {
+      const previewEl = document.querySelector('#ai-preview-container');
+      if (!previewEl) return p;
+      const previewRect = previewEl.getBoundingClientRect();
+      return {
+        ...p,
+        x: (p.x / 100) * 100,
+        y: (p.y / 100) * 100,
+        width: (p.width / 100) * 100,
+        height: (p.height / 100) * 100,
+        font_size: p.font_size || 48,
+        alignment: p.type === 'certificate_id' ? 'right' : 'center',
+      };
+    });
+
     setIsSaving(true);
     try {
-      await templatesAPI.aiFinalizePlacements(currentTemplate.id, analysis.placeholders);
+      await templatesAPI.aiFinalizePlacements(currentTemplate.id, normalizedPlaceholders);
       setShowAIEditor(false);
       setAnalysis(null);
       setSelectedPlaceholder(null);
       alert('AI placement saved successfully!');
-      // Refresh global templates state so other components get placeholders
       const refreshedTemplates = await templatesAPI.getAll();
       if (onTemplatesUpdate) {
         onTemplatesUpdate(refreshedTemplates);
@@ -605,7 +623,7 @@ export default function TemplateManagement({
                         return (
                           <div key={ph.id} className="space-y-3">
                             <div className="text-[10px] font-mono text-neutral-400 uppercase">Placeholder: <strong className="text-neutral-700">{ph.type.toUpperCase()}</strong></div>
-                            <div className="grid grid-cols-5 gap-3">
+                            <div className="grid grid-cols-4 gap-3">
                               <div>
                                 <label className="block text-[9px] font-mono text-neutral-400 mb-1">FONT</label>
                                 <div className="flex gap-1">
@@ -646,12 +664,12 @@ export default function TemplateManagement({
                                   <input
                                     type="range"
                                     min="10"
-                                    max="80"
-                                    value={ph.font_size || 24}
+                                    max="120"
+                                    value={ph.font_size || 48}
                                     onChange={(e) => updatePlaceholder(ph.id, { font_size: parseInt(e.target.value) })}
                                     className="flex-1 accent-[#E52E40]"
                                   />
-                                  <span className="text-xs font-mono text-neutral-600 w-10 text-right">{ph.font_size || 24}px</span>
+                                  <span className="text-xs font-mono text-neutral-600 w-10 text-right">{ph.font_size || 48}px</span>
                                 </div>
                               </div>
                               <div>
@@ -677,18 +695,6 @@ export default function TemplateManagement({
                                   />
                                   <span className="text-[10px] font-mono text-neutral-500">{ph.font_color || '#000000'}</span>
                                 </div>
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-mono text-neutral-400 mb-1">ALIGN</label>
-                                <select
-                                  value={ph.alignment || 'center'}
-                                  onChange={(e) => updatePlaceholder(ph.id, { alignment: e.target.value })}
-                                  className="w-full bg-white border border-neutral-200 p-2 rounded text-xs outline-none"
-                                >
-                                  <option value="left">Left</option>
-                                  <option value="center">Center</option>
-                                  <option value="right">Right</option>
-                                </select>
                               </div>
                             </div>
                           </div>

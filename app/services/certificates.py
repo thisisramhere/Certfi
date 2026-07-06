@@ -14,14 +14,13 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
-def convert_placeholder_position(placeholder: dict, image_width: int, image_height: int) -> dict:
+def convert_placeholder_position(placeholder: dict, image_width: int, image_height: int) -> tuple:
     """Convert percentage-based placeholder coordinates to pixel values."""
-    return {
-        "x": int((placeholder["x"] / 100) * image_width),
-        "y": int((placeholder["y"] / 100) * image_height),
-        "width": int((placeholder["width"] / 100) * image_width),
-        "height": int((placeholder["height"] / 100) * image_height),
-    }
+    x = int((placeholder["x"] / 100) * image_width)
+    y = int((placeholder["y"] / 100) * image_height)
+    w = int((placeholder["width"] / 100) * image_width)
+    h = int((placeholder["height"] / 100) * image_height)
+    return (x, y, w, h)
 
 
 class CertificateService:
@@ -353,11 +352,8 @@ class CertificateService:
         for ph in ph_list:
             ph_type = ph["type"]
 
-            pos = convert_placeholder_position(ph, canvas_w, canvas_h)
-            render_x = pos["x"]
-            render_y = canvas_h - pos["y"] - pos["height"]
-            render_w = pos["width"]
-            render_h = pos["height"]
+            render_x, render_y, render_w, render_h = convert_placeholder_position(ph, canvas_w, canvas_h)
+            render_y = canvas_h - render_y - render_h
 
             placeholder_value = placeholder_values.get(ph_type, "")
             if not placeholder_value:
@@ -371,18 +367,21 @@ class CertificateService:
             if ph_type == "qr_code":
                 continue
 
-            if ph_type in ("name", "participant_name"):
-                font_size = int(ph.get("font_size", 48))
+            font_size = ph.get("font_size")
+            if font_size:
+                font_size = int(font_size)
+            elif ph_type in ("name", "participant_name"):
+                font_size = max(int(render_h * 0.65), 35)
             elif ph_type == "certificate_id":
-                font_size = int(ph.get("font_size", 20))
+                font_size = 22
             else:
-                font_size = int(ph.get("font_size", 14))
+                font_size = 24
 
             font_family = ph.get("font_family", "Helvetica")
             font_weight = ph.get("font_weight", "normal")
             font_color = ph.get("font_color", "#000000")
             font_file_path = ph.get("font_file_path")
-            alignment = "right" if ph_type == "certificate_id" else ph.get("alignment", "center")
+            alignment = "right" if ph_type == "certificate_id" else "center"
 
             r = int(font_color[1:3], 16) / 255.0 if len(font_color) == 7 else 0
             g = int(font_color[3:5], 16) / 255.0 if len(font_color) == 7 else 0
@@ -466,11 +465,7 @@ class CertificateService:
         for ph in ph_list:
             ph_type = ph["type"]
 
-            pos = convert_placeholder_position(ph, canvas_w, canvas_h)
-            render_x = pos["x"]
-            render_y = pos["y"]
-            render_w = pos["width"]
-            render_h = pos["height"]
+            render_x, render_y, render_w, render_h = convert_placeholder_position(ph, canvas_w, canvas_h)
 
             placeholder_value = placeholder_values.get(ph_type, "")
             if not placeholder_value:
@@ -495,18 +490,21 @@ class CertificateService:
                     logger.warning(f"QR code render failed: {e}")
                 continue
 
-            if ph_type in ("name", "participant_name"):
-                font_size = int(ph.get("font_size", 48))
+            font_size = ph.get("font_size")
+            if font_size:
+                font_size = int(font_size)
+            elif ph_type in ("name", "participant_name"):
+                font_size = max(int(render_h * 0.65), 35)
             elif ph_type == "certificate_id":
-                font_size = int(ph.get("font_size", 20))
+                font_size = 22
             else:
-                font_size = int(ph.get("font_size", 14))
+                font_size = 24
 
             font_family = ph.get("font_family", "Helvetica")
             font_weight = ph.get("font_weight", "normal")
             font_color = ph.get("font_color", "#000000")
             font_file_path = ph.get("font_file_path")
-            alignment = "right" if ph_type == "certificate_id" else ph.get("alignment", "center")
+            alignment = "right" if ph_type == "certificate_id" else "center"
 
             pil_font = None
             if font_file_path and os.path.exists(font_file_path):
